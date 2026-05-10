@@ -134,7 +134,8 @@ const rellenarBaseComunBtn = document.getElementById("rellenarBaseComunBtn");
 const ipcGuardarBtn = document.getElementById("ipcGuardarBtn");
 
 // API base
-const API_BASE = "http://localhost:3001";
+// API base
+const API_BASE = "https://pension-app-backend.onrender.com";
 
 // ===== Cambio de tipo =====
 tipoSelect.addEventListener("change", () => {
