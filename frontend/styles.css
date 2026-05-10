@@ -1,0 +1,81 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f5f7;
+  margin: 0;
+  padding: 20px;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+h1, h2 {
+  color: #222;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.field {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+input[type="month"],
+input[type="number"],
+select {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+button {
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: none;
+  background: #0070f3;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #005ad1;
+}
+
+.hidden {
+  display: none;
+}
+
+.base-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.base-row span {
+  width: 72px;
+}
+
+pre {
+  background: #111;
+  color: #0f0;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  overflow-x: auto;
+}

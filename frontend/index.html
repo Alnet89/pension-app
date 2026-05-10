@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Calculadora pensiones</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#2c3e50">
+  <link rel="icon" href="/icons/icon-192.png">
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>Calculadora de pensión</h1>
+
+    <section class="panel">
+      <div class="field">
+        <label>Tipo de cálculo</label>
+        <select id="tipo">
+          <option value="jubilacion">Jubilación</option>
+          <option value="incapacidad">Incapacidad permanente</option>
+          <option value="jubilacionFutura">Simulación jubilación futura</option>
+        </select>
+      </div>
+
+      <div id="bloque-jubilacion" class="bloque-tipo">
+        <div class="field">
+          <label>Mes y año de jubilación</label>
+          <input type="month" id="fechaJubilacion" />
+        </div>
+      </div>
+
+      <!-- Bloque para jubilación futura -->
+      <div id="bloque-jubilacion-futura" class="bloque-tipo hidden">
+        <div class="field">
+          <label>Mes y año de jubilación futura</label>
+          <input type="month" id="fechaJubilacionFutura" />
+        </div>
+        <div class="field">
+          <label>Subida anual de la base futura</label>
+          <select id="subidaAnual">
+            <option value="0">0 %</option>
+            <option value="1">1 %</option>
+            <option value="2">2 %</option>
+            <option value="3" selected>3 %</option>
+            <option value="4">4 %</option>
+            <option value="5">5 %</option>
+            <option value="6">6 %</option>
+            <option value="7">7 %</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="bloque-incapacidad" class="bloque-tipo hidden">
+        <div class="field">
+          <label>Última base que entra en el cálculo (mes/año)</label>
+          <input type="month" id="fechaUltimaBase" />
+        </div>
+        <div class="field">
+          <label>Mes y año de nacimiento</label>
+          <input type="month" id="fechaNacimiento" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Número de bases que vas a introducir</label>
+        <input type="number" id="numBases" min="25" />
+        <button id="generarBases">Generar formulario de bases</button>
+      </div>
+    </section>
+
+    <section id="bases-section" class="panel hidden">
+      <h2>Bases de cotización</h2>
+      <p>Introduce las bases mensuales en orden cronológico (de más antigua a más reciente).</p>
+
+      <div class="field">
+        <label>Base común para todas las casillas (opcional)</label>
+        <input type="number" id="baseComun" step="0.01" />
+        <button id="rellenarBaseComunBtn" type="button">Rellenar todas con esta base</button>
+      </div>
+
+      <div id="bases-container"></div>
+
+      <div id="bases-actions" class="field">
+        <button id="exportarBasesBtn" type="button">Exportar bases (CSV)</button>
+        <input id="importarBasesFile" type="file" accept=".csv" />
+      </div>
+
+      <button id="calcularBtn">Calcular pensión</button>
+    </section>
+
+    <section id="resultado-section" class="panel hidden">
+      <h2>Resultado</h2>
+      <pre id="resultado"></pre>
+      <button id="descargarPdfBtn" type="button">Descargar informe PDF</button>
+    </section>
+
+    <!-- NUEVO: gestión manual del IPC -->
+    <section id="ipc-section" class="panel">
+      <h2>Actualizar IPC manualmente</h2>
+      <p>Permite añadir o modificar el índice IPC de un mes concreto.</p>
+      <div class="field">
+        <label>Mes (AAAA-MM)</label>
+        <input type="month" id="ipcFecha" />
+      </div>
+      <div class="field">
+        <label>Índice IPC</label>
+        <input type="number" id="ipcIndice" step="0.001" />
+      </div>
+      <div class="field">
+        <button id="ipcGuardarBtn" type="button">Guardar mes IPC</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- Registro del service worker para PWA -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/service-worker.js")
+          .then(reg => console.log("SW registrado", reg.scope))
+          .catch(err => console.error("Error SW", err));
+      });
+    }
+  </script>
+</body>
+</html>
