@@ -103,11 +103,25 @@ export function generarInformePdf(datosPension, opciones) {
   doc.moveDown(0.3);
   doc.fontSize(11).fillColor("black");
 
-  doc.text(`Bases usadas en el cálculo (escenario aplicado): ${bloquePrincipal.numeroBases}`);
+doc.text(
+  `Bases usadas en el cálculo (escenario aplicado): ${bloquePrincipal.numeroBases}`
+);
+doc.text(
+  `Suma de bases revalorizadas (todas): ${bloquePrincipal.suma.toFixed(2)} €`
+);
+doc.text(
+  `Pensión en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`
+);
+
+// Solo incapacidad: mostrar también 75% y 55%
+if (tipo === "incapacidad" && bloquePrincipal.pension75 != null && bloquePrincipal.pension55 != null) {
   doc.text(
-    `Suma de bases revalorizadas (todas): ${bloquePrincipal.suma.toFixed(2)} €`
+    `Pensión al 75% (incapacidad total): ${bloquePrincipal.pension75.toFixed(2)} €`
   );
-  doc.text(`Pensión en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`);
+  doc.text(
+    `Pensión al 55% (incapacidad total con menores de 55): ${bloquePrincipal.pension55.toFixed(2)} €`
+  );
+}
 
   // Información 24 últimas vs resto
   doc.moveDown(0.5);
