@@ -358,17 +358,28 @@ calcularBtn.addEventListener("click", async () => {
   }
 
   try {
-    const resp = await fetch(`${API_BASE}/api/calcular`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await resp.json();
-    if (!data.ok) {
-      throw new Error(data.error || "Error desconocido");
-    }
-    resultadoSection.classList.remove("hidden");
-    resultadoPre.textContent = JSON.stringify(data.result, null, 2);
+  const resp = await fetch(`${API_BASE}/api/calcular`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload)
+});
+const data = await resp.json();
+if (!data.ok) {
+  throw new Error(data.error || "Error desconocido");
+}
+resultadoSection.classList.remove("hidden");
+
+if (tipo === "incapacidad") {
+  const r = data.result;
+  const texto =
+    `Pensión en 14 pagas (100%): ${r.pension14.toFixed(2)} €\n` +
+    `Pensión al 75%: ${r.pension75.toFixed(2)} €\n` +
+    `Pensión al 55%: ${r.pension55.toFixed(2)} €\n\n` +
+    `Número de bases utilizadas: ${r.numeroBases}`;
+  resultadoPre.textContent = texto;
+} else {
+  resultadoPre.textContent = JSON.stringify(data.result, null, 2);
+}
   } catch (e) {
     alert("Error al calcular: " + e.message);
   }

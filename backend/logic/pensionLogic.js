@@ -341,10 +341,15 @@ export function calcularPensionIncapacidad(
   const ipcMapa = cargarIPCMapa();
   const { valoresReval, detalle } =
     revalorizarTramoCon24UltimasDetalle(tramo, 0, ipcMapa);
+
   const suma = valoresReval.reduce((acc, v) => acc + v, 0);
   const pension14 = pension14PagasDesdeSuma(suma, numBases);
 
-  // Aquí todas las bases revalorizadas se usan en el cálculo (no hay “mejores”)
+  // NUEVO: porcentajes de incapacidad
+  const pension75 = pension14 * 0.75;
+  const pension55 = pension14 * 0.55;
+
+  // Aquí todas las bases revalorizadas se usan en el cálculo
   const detalleConUso = detalle.map(d => ({
     ...d,
     usadaEnCalculo: true
@@ -353,6 +358,8 @@ export function calcularPensionIncapacidad(
   return {
     suma,
     pension14,
+    pension75,
+    pension55,
     numeroBases: numBases,
     detalleBases: detalleConUso
   };
