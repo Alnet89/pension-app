@@ -95,13 +95,57 @@ export function generarInformePdf(datosPension, opciones) {
     );
   }
 
-  doc.moveDown();
+ doc.moveDown();
+doc
+  .fontSize(13)
+  .fillColor("#34495e")
+  .text("Resumen del resultado");
+doc.moveDown(0.3);
+
+// Bloque de pensiones destacado
+// Título del bloque en color
+doc
+  .fontSize(11)
+  .fillColor("#1f618d")
+  .font("Helvetica-Bold")
+  .text("Importes de pensión:", { underline: true });
+
+doc.moveDown(0.2);
+
+// Pensión 100% destacada
+doc
+  .fillColor("#27ae60") // verde
+  .font("Helvetica-Bold")
+  .text(
+    `Pensión en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`
+  );
+
+if (
+  tipo === "incapacidad" &&
+  bloquePrincipal.pension75 != null &&
+  bloquePrincipal.pension55 != null
+) {
   doc
-    .fontSize(13)
-    .fillColor("#34495e")
-    .text("Resumen del resultado");
-  doc.moveDown(0.3);
-  doc.fontSize(11).fillColor("black");
+    .fillColor("#d35400") // naranja
+    .font("Helvetica-Bold")
+    .text(
+      `Pensión al 75% (incapacidad total): ${bloquePrincipal.pension75.toFixed(2)} €`
+    );
+
+  doc
+    .fillColor("#8e44ad") // morado
+    .font("Helvetica-Bold")
+    .text(
+      `Pensión al 55% (incapacidad total con menores de 55): ${bloquePrincipal.pension55.toFixed(2)} €`
+    );
+}
+
+// Volvemos a estilo normal para el resto de datos
+doc.moveDown(0.4);
+doc
+  .fontSize(11)
+  .font("Helvetica")
+  .fillColor("black");
 
 doc.text(
   `Bases usadas en el cálculo (escenario aplicado): ${bloquePrincipal.numeroBases}`
@@ -109,20 +153,6 @@ doc.text(
 doc.text(
   `Suma de bases revalorizadas (todas): ${bloquePrincipal.suma.toFixed(2)} €`
 );
-doc.text(
-  `Pensión en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`
-);
-
-// Solo incapacidad: mostrar también 75% y 55%
-if (tipo === "incapacidad" && bloquePrincipal.pension75 != null && bloquePrincipal.pension55 != null) {
-  doc.text(
-    `Pensión al 75% (incapacidad total): ${bloquePrincipal.pension75.toFixed(2)} €`
-  );
-  doc.text(
-    `Pensión al 55% (incapacidad total con menores de 55): ${bloquePrincipal.pension55.toFixed(2)} €`
-  );
-}
-
   // Información 24 últimas vs resto
   doc.moveDown(0.5);
   doc.text(
