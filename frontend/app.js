@@ -491,12 +491,86 @@ if (exportarBasesBtn) {
   exportarBasesBtn.addEventListener("click", exportarBasesCSV);
 }
 
-// ===== Importar bases desde CSV =====
+// ===== Importar bases desde CSV o Excel =====
+function aplicarDatosImportados(datos) {
+  const fechasForm = JSON.parse(basesContainer.dataset.fechas || "[]");
+  const filas = basesContainer.querySelectorAll(".base-row");
+
+  if (!fechasForm.length || !filas.length) {
+    alert("Primero genera el formulario de bases y luego importa.");
+    return;
+  }
+
+  const mapa = new Map();
+  for (const d of datos) {
+    if (d.fecha) {
+      mapa.set(String(d.fecha).trim(), d.base);
+    }
+  }
+
+  for (let i = 0; i < filas.length; i++) {
+    const fecha = fechasForm[i];
+    const fila = filas[i];
+    const valorInput = fila.querySelector(".base-valor");
+
+    if (
+      mapa.has(fecha) &&
+      mapa.get(fecha) != null &&
+      !Number.isNaN(mapa.get(fecha))
+    ) {
+      valorInput.value = mapa.get(fecha);
+    }
+  }
+
+  alert("Importación de bases completada (solo para las fechas que coinciden).");
+}
+
+function normalizarBase(valor) {
+  if (valor == null || valor === "") return null;
+  if (typeof valor === "number") return valor;
+
+  const txt = String(valor).trim().replace(/\./g, "").replace(",", ".");
+  const n = Number(txt);
+  return Number.isNaN(n) ? null : n;
+}
+
+function normalizarFechaExcel(valor) {
+  if (valor == null || valor === "") return "";
+
+  if (typeof valor === "number" && typeof XLSX !== "undefined") {
+    const partes = XLSX.SSF.parse_date_code(valor);
+    if (partes && partes.y && partes.m) {
+      return `${partes.y}-${String(partes.m).padStart(2, "0")}`;
+    }
+  }
+
+  const txt = String(valor).trim();
+
+  if (/^\d{4}-\d{2}$/.test(txt)) return txt;
+  if (/^\d{4}-\d{1}$/.test(txt)) {
+    const [y, m] = txt.split("-");
+    return `${y}-${String(m).padStart(2, "0")}`;
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(txt)) {
+    const parts = txt.split("/");
+    const m = parts[1];
+    const y = parts[2];
+    return `${y}-${m}`;
+  }
+  if (/^\d{4}\/\d{2}$/.test(txt)) {
+    const [y, m] = txt.split("/");
+    return `${y}-${m}`;
+  }
+
+  return txt;
+}
+
 function importarBasesDesdeCSV(file) {
   const reader = new FileReader();
+
   reader.onload = function (e) {
     const texto = e.target.result;
-    const lineas = texto.split(/\r?\n/).filter(l => l.trim() !== "");
+    const lineas = texto.split(/\r?\\n/).filter(l => l.trim() !== "");
 
     if (lineas.length <= 1) {
       alert("El fichero CSV no tiene datos.");
@@ -507,11 +581,12 @@ function importarBasesDesdeCSV(file) {
 
     const datos = [];
     for (const linea of lineas) {
-      const partes = linea.split(";");
+      const partes = linea.includes(";") ? linea.split(";") : linea.split(",");
       if (partes.length < 2) continue;
+
       const fecha = partes[0].trim();
-      const baseStr = partes[1].trim().replace(",", ".");
-      const baseVal = baseStr ? Number(baseStr) : null;
+      const baseVal = normalizarBase(partes[1]);
+
       if (!fecha) continue;
       datos.push({ fecha, base: baseVal });
     }
@@ -521,28 +596,7 @@ function importarBasesDesdeCSV(file) {
       return;
     }
 
-    const fechasForm = JSON.parse(basesContainer.dataset.fechas || "[]");
-    const filas = basesContainer.querySelectorAll(".base-row");
-    if (!fechasForm.length || !filas.length) {
-      alert("Primero genera el formulario de bases y luego importa.");
-      return;
-    }
-
-    const mapa = new Map();
-    for (const d of datos) {
-      mapa.set(d.fecha, d.base);
-    }
-
-    for (let i = 0; i < filas.length; i++) {
-      const fecha = fechasForm[i];
-      const fila = filas[i];
-      const valorInput = fila.querySelector(".base-valor");
-      if (mapa.has(fecha) && mapa.get(fecha) != null) {
-        valorInput.value = mapa.get(fecha);
-      }
-    }
-
-    alert("Importación de bases completada (solo para las fechas que coinciden).");
+    aplicarDatosImportados(datos);
   };
 
   reader.onerror = function () {
@@ -552,11 +606,70 @@ function importarBasesDesdeCSV(file) {
   reader.readAsText(file, "utf-8");
 }
 
+function importarBasesDesdeExcel(file) {
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+
+      const nombreHoja = workbook.SheetNames[0];
+      const hoja = workbook.Sheets[nombreHoja];
+      const filasExcel = XLSX.utils.sheet_to_json(hoja, { defval: "" });
+
+      if (!filasExcel.length) {
+        alert("El fichero Excel no tiene datos.");
+        return;
+      }
+
+      const datos = filasExcel
+        .map(row => {
+          const fecha = normalizarFechaExcel(
+            row.fecha ?? row.Fecha ?? row.FECHA ?? row.mes ?? row.Mes
+          );
+
+          const base = normalizarBase(
+            row.base ?? row.Base ?? row.BASE ?? row.importe ?? row.Importe
+          );
+
+          return { fecha, base };
+        })
+        .filter(d => d.fecha);
+
+      if (!datos.length) {
+        alert('El Excel debe tener columnas con nombres como "fecha" y "base".');
+        return;
+      }
+
+      aplicarDatosImportados(datos);
+    } catch (err) {
+      alert("Error al leer el fichero Excel: " + err.message);
+    }
+  };
+
+  reader.onerror = function () {
+    alert("Error al leer el fichero Excel.");
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
 if (importarBasesFile) {
-  importarBasesFile.addEventListener("change", (e) => {
+  importarBasesFile.addEventListener("change", e => {
     const file = e.target.files[0];
     if (!file) return;
-    importarBasesDesdeCSV(file);
+
+    const nombre = file.name.toLowerCase();
+
+    if (nombre.endsWith(".csv")) {
+      importarBasesDesdeCSV(file);
+    } else if (nombre.endsWith(".xlsx") || nombre.endsWith(".xls")) {
+      importarBasesDesdeExcel(file);
+    } else {
+      alert("Formato no soportado. Usa un fichero .csv, .xlsx o .xls.");
+    }
+
     e.target.value = "";
   });
 }
