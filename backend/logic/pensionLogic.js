@@ -27,30 +27,24 @@ export function cmpFecha(a, b) {
 // - valor real si existe en ipcMapa
 // - extrapolación con subidaAnualFutura (anual, ej 3 -> 3%) si es posterior al último mes real
 export function obtenerIndiceIPC(fecha, subidaAnualFutura, ipcMapa) {
-  // 1) Si tenemos IPC real para esa fecha, lo usamos
   const real = ipcMapa[fecha];
   if (real != null) return real;
 
-  // 2) Último mes con IPC real (según las claves del mapa)
   const ultimaFecha = obtenerUltimaFechaIPC(ipcMapa);
   const idxUltReal = ipcMapa[ultimaFecha];
 
-  // Si la fecha es anterior o igual al último mes real, devolvemos el último índice real
   if (cmpFecha(fecha, ultimaFecha) <= 0 || !subidaAnualFutura) {
     return idxUltReal;
   }
 
-  // 3) Calcular cuántos meses hay entre ultimaFecha y 'fecha'
   const { year: yU, month: mU } = parseFecha(ultimaFecha);
   const { year: yF, month: mF } = parseFecha(fecha);
   const mesesDiff = (yF - yU) * 12 + (mF - mU);
   if (mesesDiff <= 0) return idxUltReal;
 
-  // 4) Convertir subida anual futura en subida mensual aproximada
-  const tasaMensual = subidaAnualFutura / 12 / 100; // ej: 3 -> ~0,25% mensual
+  const tasaMensual = subidaAnualFutura / 12 / 100;
   const factor = Math.pow(1 + tasaMensual, mesesDiff);
 
-  // 5) Índice sintético
   return idxUltReal * factor;
 }
 
@@ -78,9 +72,17 @@ export function factorRevalDetalle(fechaOrigen, fechaDestino, subidaAnualFutura,
       porcentajeIncremento: 0
     };
   }
+
   const factor = idxD / idxO;
   const porcentajeIncremento = (factor - 1) * 100;
   return { indiceDesde: idxO, indiceHasta: idxD, factor, porcentajeIncremento };
+}
+
+/**
+ * Complemento por hijos
+ */
+export function calcularComplementoHijos(numHijos = 0, importePorHijo = 0) {
+  return Number(numHijos || 0) * Number(importePorHijo || 0);
 }
 
 /**
@@ -97,7 +99,9 @@ export function revalorizarBase(baseObj, fechaDestino, subidaAnualFutura, ipcMap
 export function revalorizarBaseConDetalle(baseObj, fechaDestino, subidaAnualFutura, ipcMapa) {
   const { indiceDesde, indiceHasta, factor, porcentajeIncremento } =
     factorRevalDetalle(baseObj.fecha, fechaDestino, subidaAnualFutura, ipcMapa);
+
   const baseActualizada = baseObj.base * factor;
+
   return {
     fecha: baseObj.fecha,
     baseOriginal: baseObj.base,
@@ -116,10 +120,12 @@ export function revalorizarTramoCon24Ultimas(tramo, subidaAnualFutura, ipcMapa) 
   if (tramo.length < 25) {
     throw new Error("Se necesitan al menos 25 bases para aplicar la regla 24+reval.");
   }
+
   const n = tramo.length;
   const ultimas24Inicio = n - 24;
   const mes25Fecha = tramo[ultimas24Inicio - 1].fecha;
   const result = [];
+
   for (let i = 0; i < n; i++) {
     const base = tramo[i];
     if (i >= ultimas24Inicio) {
@@ -128,6 +134,7 @@ export function revalorizarTramoCon24Ultimas(tramo, subidaAnualFutura, ipcMapa) 
       result.push(revalorizarBase(base, mes25Fecha, subidaAnualFutura, ipcMapa));
     }
   }
+
   return result;
 }
 
@@ -140,6 +147,7 @@ export function revalorizarTramoCon24UltimasDetalle(tramo, subidaAnualFutura, ip
   if (tramo.length < 25) {
     throw new Error("Se necesitan al menos 25 bases para aplicar la regla 24+reval.");
   }
+
   const n = tramo.length;
   const ultimas24Inicio = n - 24;
   const mes25Fecha = tramo[ultimas24Inicio - 1].fecha;
@@ -149,8 +157,8 @@ export function revalorizarTramoCon24UltimasDetalle(tramo, subidaAnualFutura, ip
 
   for (let i = 0; i < n; i++) {
     const base = tramo[i];
+
     if (i >= ultimas24Inicio) {
-      // Últimas 24 bases NO se revalorizan
       valoresReval.push(base.base);
       detalle.push({
         fecha: base.fecha,
@@ -160,7 +168,7 @@ export function revalorizarTramoCon24UltimasDetalle(tramo, subidaAnualFutura, ip
         factor: 1,
         porcentajeIncremento: 0,
         baseActualizada: base.base,
-        tipo: "ultima24" // marca para el PDF
+        tipo: "ultima24"
       });
     } else {
       const d = revalorizarBaseConDetalle(base, mes25Fecha, subidaAnualFutura, ipcMapa);
@@ -184,12 +192,12 @@ export function pension14PagasDesdeSuma(sumaBases, numeroBases) {
 export function obtenerTramoDesdeInforme(bases, fechaCorte, mesesHaciaAtras) {
   const lista = bases.filter(b => cmpFecha(b.fecha, fechaCorte) <= 0);
   lista.sort((a, b) => cmpFecha(a.fecha, b.fecha));
+
   const n = lista.length;
   if (n < mesesHaciaAtras) {
-    throw new Error(
-      `No hay suficientes bases: se necesitan ${mesesHaciaAtras}, hay ${n}`
-    );
+    throw new Error(`No hay suficientes bases: se necesitan ${mesesHaciaAtras}, hay ${n}`);
   }
+
   return lista.slice(n - mesesHaciaAtras, n);
 }
 
@@ -205,7 +213,6 @@ const paramsNuevoSistema = [
   { anyo: 2034, totales: 336, usadas: 318 },
   { anyo: 2035, totales: 340, usadas: 320 },
   { anyo: 2036, totales: 344, usadas: 322 },
-  // A partir de 2037: SIEMPRE 348 totales / 324 usadas
   { anyo: 2037, totales: 348, usadas: 324 },
   { anyo: 2038, totales: 348, usadas: 324 },
   { anyo: 2039, totales: 348, usadas: 324 },
@@ -229,20 +236,26 @@ export function calcularPensionJubilacionEscenario(
   const { valoresReval, detalle } =
     revalorizarTramoCon24UltimasDetalle(tramo, subidaAnualFutura, ipcMapa);
 
-  // Ordenamos las bases revalorizadas de mayor a menor
-  const ordenadas = [...valoresReval].sort((a, b) => b - a);
-  const mejores = ordenadas.slice(0, basesUsadasFinales);
+  const suma = [...valoresReval]
+    .sort((a, b) => b - a)
+    .slice(0, basesUsadasFinales)
+    .reduce((acc, v) => acc + v, 0);
 
-  const suma = mejores.reduce((acc, v) => acc + v, 0);
   const pension14 = pension14PagasDesdeSuma(suma, basesUsadasFinales);
 
-  // Marcamos qué bases se usan en el cálculo
-  const detalleConUso = detalle.map(d => ({
+  const indicesOrdenados = detalle
+    .map((d, idx) => ({ idx, valor: d.baseActualizada }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const usados = new Set(
+    indicesOrdenados.slice(0, basesUsadasFinales).map(x => x.idx)
+  );
+
+  const detalleConUso = detalle.map((d, idx) => ({
     ...d,
-    usadaEnCalculo: mejores.includes(d.baseActualizada)
+    usadaEnCalculo: usados.has(idx)
   }));
 
-  // Bases descartadas (no usadas) en este escenario
   const basesDescartadas = detalleConUso
     .filter(d => !d.usadaEnCalculo)
     .map(d => ({
@@ -255,24 +268,38 @@ export function calcularPensionJubilacionEscenario(
     suma,
     pension14,
     numeroBases: basesUsadasFinales,
+    numeroBasesTotalesTramo: basesTotalesTramo,
     detalleBases: detalleConUso,
     basesDescartadas
   };
 }
 
-export function calcularPensionJubilacion(bases, fechaJubilacion, subidaAnualFutura = 0) {
+export function calcularPensionJubilacion(
+  bases,
+  fechaJubilacion,
+  subidaAnualFutura = 0,
+  numHijos = 0,
+  importePorHijo = 0
+) {
   const ipcMapa = cargarIPCMapa();
   const { year: anyoJub } = parseFecha(fechaJubilacion);
+  const complementoHijos = calcularComplementoHijos(numHijos, importePorHijo);
 
-  // Escenario 25 años: SIEMPRE últimas 300 bases
-  const esc25 = calcularPensionJubilacionEscenario(
+  const esc25Base = calcularPensionJubilacionEscenario(
     bases,
     fechaJubilacion,
-    300,       // <-- basesTotalesTramo
-    300,       // <-- basesUsadasFinales
+    300,
+    300,
     subidaAnualFutura,
     ipcMapa
   );
+
+  const esc25 = {
+    ...esc25Base,
+    complementoHijos,
+    pension14SinComplemento: esc25Base.pension14,
+    pension14: esc25Base.pension14 + complementoHijos
+  };
 
   let escNuevo = null;
   let mejor = "25anios";
@@ -280,15 +307,21 @@ export function calcularPensionJubilacion(bases, fechaJubilacion, subidaAnualFut
   const param = paramsNuevoSistema.find(p => p.anyo === anyoJub);
 
   if (param) {
-    // Escenario nuevo: últimas 'totales' bases, se usan solo 'usadas'
-    escNuevo = calcularPensionJubilacionEscenario(
+    const escNuevoBase = calcularPensionJubilacionEscenario(
       bases,
       fechaJubilacion,
-      param.totales,   // <-- 348 para 2039
-      param.usadas,    // <-- 324 para 2039
+      param.totales,
+      param.usadas,
       subidaAnualFutura,
       ipcMapa
     );
+
+    escNuevo = {
+      ...escNuevoBase,
+      complementoHijos,
+      pension14SinComplemento: escNuevoBase.pension14,
+      pension14: escNuevoBase.pension14 + complementoHijos
+    };
 
     if (escNuevo.pension14 > esc25.pension14) {
       mejor = "nuevo";
@@ -298,25 +331,33 @@ export function calcularPensionJubilacion(bases, fechaJubilacion, subidaAnualFut
   return {
     escenario25Anios: esc25,
     escenarioNuevo: escNuevo,
-    mejor
+    mejor,
+    complementoHijos,
+    numHijos,
+    importePorHijo
   };
 }
+
 export function calcularEdadEnFecha(nacimiento, fecha) {
   let anios = fecha.year - nacimiento.year;
   let meses = fecha.month - nacimiento.month;
+
   if (meses < 0) {
     anios -= 1;
     meses += 12;
   }
+
   return { anios, meses };
 }
 
 export function determinarNumeroBasesIncapacidad(fechaUltimaBase, nacimiento) {
   const f = parseFecha(fechaUltimaBase);
   const edad = calcularEdadEnFecha(nacimiento, f);
+
   if (edad.anios >= 52) {
     return 96;
   }
+
   const aniosMenos20 = edad.anios - 20;
   const totalMeses = aniosMenos20 * 12 + edad.meses;
   const mesesMinimos = Math.floor(totalMeses / 4);
@@ -329,7 +370,9 @@ export function determinarNumeroBasesIncapacidad(fechaUltimaBase, nacimiento) {
 export function calcularPensionIncapacidad(
   bases,
   fechaUltimaBase,
-  nacimiento
+  nacimiento,
+  numHijos = 0,
+  importePorHijo = 0
 ) {
   const numBases = determinarNumeroBasesIncapacidad(fechaUltimaBase, nacimiento);
   const tramo = obtenerTramoDesdeInforme(bases, fechaUltimaBase, numBases);
@@ -343,13 +386,12 @@ export function calcularPensionIncapacidad(
     revalorizarTramoCon24UltimasDetalle(tramo, 0, ipcMapa);
 
   const suma = valoresReval.reduce((acc, v) => acc + v, 0);
-  const pension14 = pension14PagasDesdeSuma(suma, numBases);
+  const pension14Base = pension14PagasDesdeSuma(suma, numBases);
 
-  // NUEVO: porcentajes de incapacidad
-  const pension75 = pension14 * 0.75;
-  const pension55 = pension14 * 0.55;
+  const complementoHijos = calcularComplementoHijos(numHijos, importePorHijo);
+  const pension75Base = pension14Base * 0.75;
+  const pension55Base = pension14Base * 0.55;
 
-  // Aquí todas las bases revalorizadas se usan en el cálculo
   const detalleConUso = detalle.map(d => ({
     ...d,
     usadaEnCalculo: true
@@ -357,9 +399,15 @@ export function calcularPensionIncapacidad(
 
   return {
     suma,
-    pension14,
-    pension75,
-    pension55,
+    pension14SinComplemento: pension14Base,
+    pension14: pension14Base + complementoHijos,
+    pension75SinComplemento: pension75Base,
+    pension75: pension75Base + complementoHijos,
+    pension55SinComplemento: pension55Base,
+    pension55: pension55Base + complementoHijos,
+    complementoHijos,
+    numHijos,
+    importePorHijo,
     numeroBases: numBases,
     detalleBases: detalleConUso
   };
@@ -367,19 +415,34 @@ export function calcularPensionIncapacidad(
 
 export function calcularPension(req) {
   const { tipo } = req;
+  const numHijos = Number(req.numHijos || 0);
+  const importePorHijo = Number(req.importePorHijo || 0);
+
   if (tipo === "jubilacion") {
-    if (!req.fechaJubilacion) throw new Error("Falta fecha de jubilación");
-    const subida = req.subidaAnualFutura ?? 0;
-    return calcularPensionJubilacion(req.bases, req.fechaJubilacion, subida);
-  } else if (tipo === "incapacidad") {
+    if (!req.fechaJubilacion) {
+      throw new Error("Falta fecha de jubilación");
+    }
+    return calcularPensionJubilacion(
+      req.bases,
+      req.fechaJubilacion,
+      req.subidaAnualFutura || 0,
+      numHijos,
+      importePorHijo
+    );
+  }
+
+  if (tipo === "incapacidad") {
     if (!req.fechaUltimaBase || !req.nacimiento) {
       throw new Error("Faltan datos para incapacidad");
     }
     return calcularPensionIncapacidad(
       req.bases,
       req.fechaUltimaBase,
-      req.nacimiento
+      req.nacimiento,
+      numHijos,
+      importePorHijo
     );
   }
+
   throw new Error("Tipo de cálculo no soportado");
 }

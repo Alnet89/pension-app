@@ -124,6 +124,10 @@ const calcularBtn = document.getElementById("calcularBtn");
 const resultadoSection = document.getElementById("resultado-section");
 const resultadoPre = document.getElementById("resultado");
 
+// NUEVO: complemento por hijos
+const numHijosInput = document.getElementById("numHijos");
+const importePorHijoInput = document.getElementById("importePorHijo");
+
 // Botones extra
 const exportarBasesBtn = document.getElementById("exportarBasesBtn");
 const importarBasesFile = document.getElementById("importarBasesFile");
@@ -133,7 +137,6 @@ const rellenarBaseComunBtn = document.getElementById("rellenarBaseComunBtn");
 // Bloque IPC manual
 const ipcGuardarBtn = document.getElementById("ipcGuardarBtn");
 
-// API base
 // API base
 const API_BASE = "https://pension-app-backend.onrender.com";
 
@@ -302,7 +305,15 @@ calcularBtn.addEventListener("click", async () => {
     });
   }
 
-  let payload = { tipo, bases: basesTodas };
+  const numHijos = Number(numHijosInput?.value || 0);
+  const importePorHijo = Number(importePorHijoInput?.value || 0);
+
+  let payload = {
+    tipo,
+    bases: basesTodas,
+    numHijos,
+    importePorHijo
+  };
 
   if (tipo === "jubilacion") {
     const fechaJub = document.getElementById("fechaJubilacion").value;
@@ -334,7 +345,6 @@ calcularBtn.addEventListener("click", async () => {
 
     const subidaAnual = Number(document.getElementById("subidaAnual").value);
 
-    // Bases reales hasta último mes cerrado (aprox: mes anterior al actual)
     const hoy = new Date();
     const yearHoy = hoy.getFullYear();
     const monthHoy = hoy.getMonth() + 1;
@@ -353,77 +363,82 @@ calcularBtn.addEventListener("click", async () => {
       tipo: "jubilacion",
       bases: basesProyectadas,
       fechaJubilacion: `${y}-${m}`,
-      subidaAnualFutura: subidaAnual
+      subidaAnualFutura: subidaAnual,
+      numHijos,
+      importePorHijo
     };
   }
 
   try {
-  const resp = await fetch(`${API_BASE}/api/calcular`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload)
-});
-const data = await resp.json();
-if (!data.ok) {
-  throw new Error(data.error || "Error desconocido");
-}
-resultadoSection.classList.remove("hidden");
+    const resp = await fetch(`${API_BASE}/api/calcular`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-if (tipo === "incapacidad") {
-  const r = data.result;
-  const texto =
-    `Pensión en 14 pagas (100%): ${r.pension14.toFixed(2)} €\n` +
-    `Pensión al 75%: ${r.pension75.toFixed(2)} €\n` +
-    `Pensión al 55%: ${r.pension55.toFixed(2)} €\n\n` +
-    `Número de bases utilizadas: ${r.numeroBases}`;
-  resultadoPre.textContent = texto;
-
-} else if (tipo === "jubilacion") {
-  const r = data.result;
-  const esc25 = r.escenario25Anios;
-  const escNuevo = r.escenarioNuevo;
-
-  let texto = "";
-
-  if (esc25) {
-    texto +=
-      `ESCENARIO 25 AÑOS\n` +
-      `- Bases usadas: ${esc25.numeroBases}\n` +
-      `- Suma de bases: ${esc25.suma.toFixed(2)} €\n` +
-      `- Pensión en 14 pagas: ${esc25.pension14.toFixed(2)} €\n\n`;
-  }
-
-  if (escNuevo) {
-    texto +=
-      `ESCENARIO NUEVO SISTEMA\n` +
-      `- Bases usadas: ${escNuevo.numeroBases}\n` +
-      `- Suma de bases: ${escNuevo.suma.toFixed(2)} €\n` +
-      `- Pensión en 14 pagas: ${escNuevo.pension14.toFixed(2)} €\n\n`;
-
-    if (escNuevo.basesDescartadas && escNuevo.basesDescartadas.length) {
-      texto += `BASES DESCARTADAS DEL NUEVO SISTEMA\n`;
-
-      escNuevo.basesDescartadas.forEach((b, i) => {
-        texto +=
-          `${i + 1}. ${b.fecha} | ` +
-          `Base original: ${b.baseOriginal.toFixed(2)} € | ` +
-          `Base revalorizada: ${b.baseRevalorizada.toFixed(2)} €\n`;
-      });
-
-      texto += `\n`;
+    const data = await resp.json();
+    if (!data.ok) {
+      throw new Error(data.error || "Error desconocido");
     }
-  }
 
-  texto +=
-    `ESCENARIO MÁS BENEFICIOSO: ${r.mejor === "nuevo" ? "Nuevo sistema" : "25 años"}`;
+    resultadoSection.classList.remove("hidden");
 
-  resultadoPre.textContent = texto;
+    if (tipo === "incapacidad") {
+      const r = data.result;
+      const texto =
+        `Pensión en 14 pagas (100%): ${r.pension14.toFixed(2)} €\n` +
+        `Pensión al 75%: ${r.pension75.toFixed(2)} €\n` +
+        `Pensión al 55%: ${r.pension55.toFixed(2)} €\n` +
+        `Complemento por hijos: ${(r.complementoHijos || 0).toFixed(2)} €\n\n` +
+        `Número de bases utilizadas: ${r.numeroBases}`;
+      resultadoPre.textContent = texto;
 
-} else {
-  // Jubilación futura: se queda como está
-  resultadoPre.textContent = JSON.stringify(data.result, null, 2);
-}
-}
+    } else if (tipo === "jubilacion") {
+      const r = data.result;
+      const esc25 = r.escenario25Anios;
+      const escNuevo = r.escenarioNuevo;
+
+      let texto = "";
+
+      if (esc25) {
+        texto +=
+          `ESCENARIO 25 AÑOS\n` +
+          `- Bases usadas: ${esc25.numeroBases}\n` +
+          `- Suma de bases: ${esc25.suma.toFixed(2)} €\n` +
+          `- Complemento por hijos: ${(esc25.complementoHijos || 0).toFixed(2)} €\n` +
+          `- Pensión en 14 pagas: ${esc25.pension14.toFixed(2)} €\n\n`;
+      }
+
+      if (escNuevo) {
+        texto +=
+          `ESCENARIO NUEVO SISTEMA\n` +
+          `- Bases usadas: ${escNuevo.numeroBases}\n` +
+          `- Suma de bases: ${escNuevo.suma.toFixed(2)} €\n` +
+          `- Complemento por hijos: ${(escNuevo.complementoHijos || 0).toFixed(2)} €\n` +
+          `- Pensión en 14 pagas: ${escNuevo.pension14.toFixed(2)} €\n\n`;
+
+        if (escNuevo.basesDescartadas && escNuevo.basesDescartadas.length) {
+          texto += `BASES DESCARTADAS DEL NUEVO SISTEMA\n`;
+
+          escNuevo.basesDescartadas.forEach((b, i) => {
+            texto +=
+              `${i + 1}. ${b.fecha} | ` +
+              `Base original: ${b.baseOriginal.toFixed(2)} € | ` +
+              `Base revalorizada: ${b.baseRevalorizada.toFixed(2)} €\n`;
+          });
+
+          texto += `\n`;
+        }
+      }
+
+      texto +=
+        `ESCENARIO MÁS BENEFICIOSO: ${r.mejor === "nuevo" ? "Nuevo sistema" : "25 años"}`;
+
+      resultadoPre.textContent = texto;
+
+    } else {
+      resultadoPre.textContent = JSON.stringify(data.result, null, 2);
+    }
   } catch (e) {
     alert("Error al calcular: " + e.message);
   }
@@ -607,7 +622,15 @@ if (descargarPdfBtn) {
       });
     }
 
-    let payload = { tipo, bases: basesTodas };
+    const numHijos = Number(numHijosInput?.value || 0);
+    const importePorHijo = Number(importePorHijoInput?.value || 0);
+
+    let payload = {
+      tipo,
+      bases: basesTodas,
+      numHijos,
+      importePorHijo
+    };
 
     if (tipo === "jubilacion") {
       const fechaJub = document.getElementById("fechaJubilacion").value;
@@ -617,6 +640,7 @@ if (descargarPdfBtn) {
       }
       const [y, m] = fechaJub.split("-");
       payload.fechaJubilacion = `${y}-${m}`;
+
     } else if (tipo === "incapacidad") {
       const fechaUltima = document.getElementById("fechaUltimaBase").value;
       const fechaNac = document.getElementById("fechaNacimiento").value;
@@ -628,12 +652,14 @@ if (descargarPdfBtn) {
       const [yn, mn] = fechaNac.split("-");
       payload.fechaUltimaBase = `${yu}-${mu}`;
       payload.nacimiento = { year: Number(yn), month: Number(mn) };
+
     } else if (tipo === "jubilacionFutura") {
       const fechaJubFut = document.getElementById("fechaJubilacionFutura").value;
       if (!fechaJubFut) {
         alert("Indica mes y año de jubilación futura.");
         return;
       }
+
       const subidaAnual = Number(document.getElementById("subidaAnual").value);
 
       const hoy = new Date();
@@ -649,12 +675,15 @@ if (descargarPdfBtn) {
 
       const basesProyectadas = proyectarBasesFuturas(fechas, basesUsuario, subidaAnual);
 
+      const [y, m] = fechaJubFut.split("-");
       tipo = "jubilacion";
       payload = {
         tipo: "jubilacion",
         bases: basesProyectadas,
-        fechaJubilacion: fechaJubFut.replace(/-/g, "-"),
-        subidaAnualFutura: subidaAnual
+        fechaJubilacion: `${y}-${m}`,
+        subidaAnualFutura: subidaAnual,
+        numHijos,
+        importePorHijo
       };
     }
 
@@ -664,10 +693,12 @@ if (descargarPdfBtn) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         throw new Error(err.error || "Error al generar PDF");
       }
+
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
