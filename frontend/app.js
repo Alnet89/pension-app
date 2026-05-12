@@ -377,8 +377,52 @@ if (tipo === "incapacidad") {
     `Pensión al 55%: ${r.pension55.toFixed(2)} €\n\n` +
     `Número de bases utilizadas: ${r.numeroBases}`;
   resultadoPre.textContent = texto;
+
+} else if (tipo === "jubilacion") {
+  const r = data.result;
+  const esc25 = r.escenario25Anios;
+  const escNuevo = r.escenarioNuevo;
+
+  let texto = "";
+
+  if (esc25) {
+    texto +=
+      `ESCENARIO 25 AÑOS\n` +
+      `- Bases usadas: ${esc25.numeroBases}\n` +
+      `- Suma de bases: ${esc25.suma.toFixed(2)} €\n` +
+      `- Pensión en 14 pagas: ${esc25.pension14.toFixed(2)} €\n\n`;
+  }
+
+  if (escNuevo) {
+    texto +=
+      `ESCENARIO NUEVO SISTEMA\n` +
+      `- Bases usadas: ${escNuevo.numeroBases}\n` +
+      `- Suma de bases: ${escNuevo.suma.toFixed(2)} €\n` +
+      `- Pensión en 14 pagas: ${escNuevo.pension14.toFixed(2)} €\n\n`;
+
+    if (escNuevo.basesDescartadas && escNuevo.basesDescartadas.length) {
+      texto += `BASES DESCARTADAS DEL NUEVO SISTEMA\n`;
+
+      escNuevo.basesDescartadas.forEach((b, i) => {
+        texto +=
+          `${i + 1}. ${b.fecha} | ` +
+          `Base original: ${b.baseOriginal.toFixed(2)} € | ` +
+          `Base revalorizada: ${b.baseRevalorizada.toFixed(2)} €\n`;
+      });
+
+      texto += `\n`;
+    }
+  }
+
+  texto +=
+    `ESCENARIO MÁS BENEFICIOSO: ${r.mejor === "nuevo" ? "Nuevo sistema" : "25 años"}`;
+
+  resultadoPre.textContent = texto;
+
 } else {
+  // Jubilación futura: se queda como está
   resultadoPre.textContent = JSON.stringify(data.result, null, 2);
+}
 }
   } catch (e) {
     alert("Error al calcular: " + e.message);
