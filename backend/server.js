@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import { calcularPension } from "./logic/pensionLogic.js";
 import { generarInformePdf } from "./logic/informePdf.js";
 import { cargarIPCMapa, guardarIPCMapa } from "./logic/ipcData.js";
@@ -8,6 +10,12 @@ import { cargarIPCMapa, guardarIPCMapa } from "./logic/ipcData.js";
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Servir frontend estático
+app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Guardar/actualizar un mes de IPC
 app.post("/api/ipc", (req, res) => {
@@ -69,6 +77,10 @@ app.post("/api/informe", async (req, res) => {
     console.error(e);
     res.status(400).json({ ok: false, error: e.message });
   }
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
 const PORT = process.env.PORT || 3001;
