@@ -178,13 +178,16 @@ doc.text(
       );
     }
 
-    if (bloqueNuevo) {
-      const divisorNuevo = bloqueNuevo.numeroBases * (14 / 12);
-      doc.text(
-        `- Escenario nuevo (calendario de transición): ${bloqueNuevo.numeroBases} bases, divisor ${divisorNuevo.toFixed(2)}, ` +
-        `pensión 14 pagas: ${bloqueNuevo.pension14.toFixed(2)} €`
-      );
-    }
+ if (bloqueNuevo) {
+  const divisorNuevo = bloqueNuevo.numeroBases * (14 / 12);
+  const totalTramoNuevo =
+    bloqueNuevo.numeroBasesTotalesTramo ?? bloqueNuevo.numeroBases;
+
+  doc.text(
+    `- Escenario nuevo (calendario de transición): ${bloqueNuevo.numeroBases} bases de ${totalTramoNuevo}, divisor ${divisorNuevo.toFixed(2)}, ` +
+    `pensión 14 pagas: ${bloqueNuevo.pension14.toFixed(2)} €`
+  );
+}
 
     doc.text(
       `Escenario aplicado: ${
