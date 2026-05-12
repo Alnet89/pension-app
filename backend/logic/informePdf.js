@@ -11,31 +11,27 @@ export function generarInformePdf(datosPension, opciones) {
   console.log(">>> generarInformePdf llamado, tipo:", tipo);
   console.log(">>> claves datosPension:", Object.keys(datosPension || {}));
 
-  // Preparar bloques según tipo
   let bloquePrincipal = null;
   let bloque25 = null;
   let bloqueNuevo = null;
 
   if (tipo === "jubilacion") {
-    const mejor = datosPension.mejor; // "nuevo" o "25anios"
+    const mejor = datosPension.mejor;
     bloque25 = datosPension.escenario25Anios;
     bloqueNuevo = datosPension.escenarioNuevo;
     bloquePrincipal = mejor === "nuevo" ? bloqueNuevo : bloque25;
   } else {
-    // Incapacidad ya viene como bloque único
     bloquePrincipal = datosPension;
   }
 
-  const detalle = bloquePrincipal.detalleBases || [];
+  const detalle = bloquePrincipal?.detalleBases || [];
   console.log(">>> detalleBases longitud:", detalle.length);
   console.log(">>> ejemplo detalle[0]:", detalle[0]);
 
-  // Ordenar de más reciente a más antigua (fecha AAAA-MM)
   const detalleOrdenado = [...detalle].sort((a, b) =>
     a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0
   );
 
-  // Separar últimas 24 (sin revalorización) del resto
   const ultimas24 = detalleOrdenado.filter(d => d.tipo === "ultima24");
   const resto = detalleOrdenado.filter(d => d.tipo !== "ultima24");
 
@@ -60,7 +56,6 @@ export function generarInformePdf(datosPension, opciones) {
   doc.on("data", buffers.push.bind(buffers));
   doc.on("end", () => {});
 
-  // ===== Portada y resumen =====
   doc
     .fontSize(18)
     .fillColor("#2c3e50")
@@ -95,65 +90,109 @@ export function generarInformePdf(datosPension, opciones) {
     );
   }
 
- doc.moveDown();
-doc
-  .fontSize(13)
-  .fillColor("#34495e")
-  .text("Resumen del resultado");
-doc.moveDown(0.3);
+  doc.moveDown();
+  doc
+    .fontSize(13)
+    .fillColor("#34495e")
+    .text("Resumen del resultado");
+  doc.moveDown(0.3);
 
-// Bloque de pensiones destacado
-// Título del bloque en color
-doc
-  .fontSize(11)
-  .fillColor("#1f618d")
-  .font("Helvetica-Bold")
-  .text("Importes de pensión:", { underline: true });
+  doc
+    .fontSize(11)
+    .fillColor("#1f618d")
+    .font("Helvetica-Bold")
+    .text("Importes de pensión:", { underline: true });
 
-doc.moveDown(0.2);
+  doc.moveDown(0.2);
 
-// Pensión 100% destacada
-doc
-  .fillColor("#27ae60") // verde
-  .font("Helvetica-Bold")
-  .text(
-    `Pensión en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`
+  const complementoHijos = bloquePrincipal.complementoHijos || 0;
+  const pensionBase =
+    bloquePrincipal.pension14SinComplemento ??
+    (bloquePrincipal.pension14 || 0) - complementoHijos;
+
+  if (tipo === "incapacidad") {
+    const pensionBase75 =
+      bloquePrincipal.pension75SinComplemento ??
+      (bloquePrincipal.pension75 || 0) - complementoHijos;
+    const pensionBase55 =
+      bloquePrincipal.pension55SinComplemento ??
+      (bloquePrincipal.pension55 || 0) - complementoHijos;
+
+    doc
+      .fillColor("#27ae60")
+      .font("Helvetica-Bold")
+      .text(
+        `Pensión en 14 pagas sin complemento por hijos: ${pensionBase.toFixed(2)} €`
+      );
+
+    if (complementoHijos > 0) {
+      doc
+        .fillColor("#8e44ad")
+        .font("Helvetica-Bold")
+        .text(`Complemento por hijos: ${complementoHijos.toFixed(2)} €`);
+    }
+
+    doc
+      .fillColor("#1f618d")
+      .font("Helvetica-Bold")
+      .text(
+        `Pensión total en 14 pagas: ${bloquePrincipal.pension14.toFixed(2)} €`
+      );
+
+    if (
+      bloquePrincipal.pension75 != null &&
+      bloquePrincipal.pension55 != null
+    ) {
+      doc
+        .fillColor("#d35400")
+        .font("Helvetica-Bold")
+        .text(
+          `Pensión al 75%: ${pensionBase75.toFixed(2)} € + hijos ${complementoHijos.toFixed(2)} € = ${bloquePrincipal.pension75.toFixed(2)} €`
+        );
+
+      doc
+        .fillColor("#8e44ad")
+        .font("Helvetica-Bold")
+        .text(
+          `Pensión al 55%: ${pensionBase55.toFixed(2)} € + hijos ${complementoHijos.toFixed(2)} € = ${bloquePrincipal.pension55.toFixed(2)} €`
+        );
+    }
+  } else {
+    doc
+      .fillColor("#27ae60")
+      .font("Helvetica-Bold")
+      .text(
+        `Pensión en 14 pagas sin complemento por hijos: ${pensionBase.toFixed(2)} €`
+      );
+
+    if (complementoHijos > 0) {
+      doc
+        .fillColor("#8e44ad")
+        .font("Helvetica-Bold")
+        .text(`Complemento por hijos: ${complementoHijos.toFixed(2)} €`);
+    }
+
+    doc
+      .fillColor("#1f618d")
+      .font("Helvetica-Bold")
+      .text(
+        `Pensión total en 14 pagas (escenario aplicado): ${bloquePrincipal.pension14.toFixed(2)} €`
+      );
+  }
+
+  doc.moveDown(0.4);
+  doc
+    .fontSize(11)
+    .font("Helvetica")
+    .fillColor("black");
+
+  doc.text(
+    `Bases usadas en el cálculo (escenario aplicado): ${bloquePrincipal.numeroBases}`
+  );
+  doc.text(
+    `Suma de bases revalorizadas (escenario aplicado): ${bloquePrincipal.suma.toFixed(2)} €`
   );
 
-if (
-  tipo === "incapacidad" &&
-  bloquePrincipal.pension75 != null &&
-  bloquePrincipal.pension55 != null
-) {
-  doc
-    .fillColor("#d35400") // naranja
-    .font("Helvetica-Bold")
-    .text(
-      `Pensión al 75% (incapacidad total): ${bloquePrincipal.pension75.toFixed(2)} €`
-    );
-
-  doc
-    .fillColor("#8e44ad") // morado
-    .font("Helvetica-Bold")
-    .text(
-      `Pensión al 55% (incapacidad total con menores de 55): ${bloquePrincipal.pension55.toFixed(2)} €`
-    );
-}
-
-// Volvemos a estilo normal para el resto de datos
-doc.moveDown(0.4);
-doc
-  .fontSize(11)
-  .font("Helvetica")
-  .fillColor("black");
-
-doc.text(
-  `Bases usadas en el cálculo (escenario aplicado): ${bloquePrincipal.numeroBases}`
-);
-doc.text(
-  `Suma de bases revalorizadas (todas): ${bloquePrincipal.suma.toFixed(2)} €`
-);
-  // Información 24 últimas vs resto
   doc.moveDown(0.5);
   doc.text(
     `Suma de las últimas 24 bases sin revalorizar: ${sumaUltimas24.toFixed(2)} €`
@@ -165,29 +204,33 @@ doc.text(
     `Total de bases usadas (24 + resto): ${sumaTotal.toFixed(2)} €`
   );
 
-  // Comparativa de escenarios sólo en jubilación
   if (tipo === "jubilacion") {
     doc.moveDown(0.5);
     doc.text("Escenarios comparados (25 años vs nuevo sistema):");
 
     if (bloque25) {
       const divisor25 = bloque25.numeroBases * (14 / 12);
+      const pensionBase25 =
+        bloque25.pension14SinComplemento ?? bloque25.pension14;
+      const complemento25 = bloque25.complementoHijos || 0;
+
       doc.text(
-        `- Escenario 25 años (últimas 300 bases): ${bloque25.numeroBases} bases, divisor ${divisor25.toFixed(2)}, ` +
-        `pensión 14 pagas: ${bloque25.pension14.toFixed(2)} €`
+        `- Escenario 25 años (últimas 300 bases): ${bloque25.numeroBases} bases, divisor ${divisor25.toFixed(2)}, suma bases ${bloque25.suma.toFixed(2)} €, pensión ${pensionBase25.toFixed(2)} € + hijos ${complemento25.toFixed(2)} € = total ${bloque25.pension14.toFixed(2)} €`
       );
     }
 
- if (bloqueNuevo) {
-  const divisorNuevo = bloqueNuevo.numeroBases * (14 / 12);
-  const totalTramoNuevo =
-    bloqueNuevo.numeroBasesTotalesTramo ?? bloqueNuevo.numeroBases;
+    if (bloqueNuevo) {
+      const divisorNuevo = bloqueNuevo.numeroBases * (14 / 12);
+      const totalTramoNuevo =
+        bloqueNuevo.numeroBasesTotalesTramo ?? bloqueNuevo.numeroBases;
+      const pensionBaseNuevo =
+        bloqueNuevo.pension14SinComplemento ?? bloqueNuevo.pension14;
+      const complementoNuevo = bloqueNuevo.complementoHijos || 0;
 
-  doc.text(
-    `- Escenario nuevo (calendario de transición): ${bloqueNuevo.numeroBases} bases de ${totalTramoNuevo}, divisor ${divisorNuevo.toFixed(2)}, ` +
-    `pensión 14 pagas: ${bloqueNuevo.pension14.toFixed(2)} €`
-  );
-}
+      doc.text(
+        `- Escenario nuevo (calendario de transición): ${bloqueNuevo.numeroBases} bases de ${totalTramoNuevo}, divisor ${divisorNuevo.toFixed(2)}, suma bases ${bloqueNuevo.suma.toFixed(2)} €, pensión ${pensionBaseNuevo.toFixed(2)} € + hijos ${complementoNuevo.toFixed(2)} € = total ${bloqueNuevo.pension14.toFixed(2)} €`
+      );
+    }
 
     doc.text(
       `Escenario aplicado: ${
@@ -196,7 +239,6 @@ doc.text(
     );
   }
 
-  // ===== Detalle de bases mes a mes (escenario aplicado) =====
   doc.addPage();
   doc
     .fontSize(13)
@@ -225,7 +267,7 @@ doc.text(
     doc
       .fontSize(8)
       .font(bold ? "Helvetica-Bold" : "Helvetica")
-      .text(text, x + 3, y + 3, {
+      .text(String(text ?? ""), x + 3, y + 3, {
         width: w - 6,
         height: h - 6,
         align,
@@ -323,7 +365,6 @@ doc.text(
     drawRow(d, idx);
   });
 
-  // ===== Bases descartadas en el escenario nuevo =====
   if (
     tipo === "jubilacion" &&
     bloqueNuevo &&
@@ -385,6 +426,7 @@ doc.text(
         d.baseOriginal != null ? d.baseOriginal.toFixed(2) : "",
         d.baseRevalorizada != null ? d.baseRevalorizada.toFixed(2) : ""
       ];
+
       for (let i = 0; i < valores.length; i++) {
         drawCell(cx3, posY2, colWidths2[i], rowHeight2, valores[i], {
           fill,
